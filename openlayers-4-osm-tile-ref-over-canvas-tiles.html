@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Openlayers 3.7+ Display OSM ZXY Ref over Canvas-tile Example Grid</title>
+
+  <!-- Jquery - Bootstrap -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+  <script src="https://code.jquery.com/jquery-3.3.0.min.js"
+	integrity="sha256-RTQy8VOmNlT6b2PIRur37p6JEBZUE7o8wPgMvu18MC4="
+	crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>	
+
+  <!-- OL4 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/ol3/4.0.1/ol.css" />
+  <script src="https://openlayers.org/en/v4.6.4/build/ol.js"></script>
+
+  <style type="text/css">
+	html, body {
+	  padding: 0;
+	  margin: 0;
+	  font-family: sans-serif;
+	  font-size: small;
+	  width:100%; height: 100%; position:fixed; 
+	}
+	section {position:relative;float:top; clear:both;
+	}
+	#map, .map {
+		width: 100%; height:100%; position:fixed;
+		border: solid 0.1em #007766;
+		color:white;background:gray;
+		margin:0;
+		}
+	.ol-zoomslider {background-color:#a6a; opacity:0.5;}
+	.attrib > a {padding-right:4em; margin-right:4em; background-color:yellow; decoration : none;}	
+</style>
+</head>
+<body>
+  <section>
+	<div id="map" class="map"></div>
+    <div id="popup" class="ol-popup">
+      <a href="#" id="popup-closer" class="ol-popup-closer"></a>
+      <div id="popup-content"></div>
+    </div>
+    <div id="tileGrid"></div>
+    <div id="extent"></div>
+    <div id="centerCoord"></div>
+  </section>
+</body>
+<script>  
+/*-----------------------------------------------------------------------------------*
+	Name                 : openlayers-4-osm-tile-ref-over-canvas-tiles.html
+	Description          : View OSM ZXy Refs over canvas tiles openlayer example
+	Date                 : 2018-03-03
+	Author        	     : Pierre Béland
+ *-----------------------------------------------------------------------------------*/
+	
+	var cscale = new ol.control.ScaleLine({opacity:0.6});	
+	var cattribution = new ol.control.Attribution({
+    className: "attrib",
+	collapsible: false
+	});	  
+
+	var controlsncA = new ol.control.defaults({
+        className: 'attrib_map',  
+		attributionOptions: {
+		  collapsible: false
+		}
+	  }).extend([cscale
+	  ]);
+
+/*  my.CustomVectorLayer = function(settings){
+   ...
+   ol.layer.Vector.call(this, settings);
+};
+ol.inherits(my.CustomVectorLayer, ol.layer.Vector);
+var myLayer = new my.CustomVectorLayer(settings);
+*/
+/**
+ * Define a namespace for the application.
+ */
+Document.my = {};
+var my = Document.my;
+my.TileDebug = function (options) { 
+		ol.source.TileDebug.call(this, options); 
+    this.customOption_ = options.customOption;
+	 };
+ol.inherits(my.TileDebug, ol.source.TileDebug);
+ 	  my.TileDebug.prototype.getTile = function (z, x, y) { 
+		var tileCoordKey = ol.tilecoord.getKeyZXY(z, x, y);
+
+		if (this.tileCache.containsKey(tileCoordKey)) {
+			return /** @type {!ol.source.TileDebug.Tile_} */ (this.tileCache.get(tileCoordKey));
+		} else {
+			var tileSize = ol.size.toSize(this.tileGrid.getTileSize(z));
+			var tileCoord = [z, x, y];
+			yrev=-y-1	// v3.7+  Y Coord for OSM ZXY
+			var OSMtileCoord = [z, x, yrev];
+			var text = "/ "+ z.toString() + ' / ' + x.toString() + ' / ' + yrev.toString(); // OSM ZXY Coord
+			console.log( "MyTileDebug.getTile", tileCoordKey, ', OSM ZXY =', text);
+			var tile = new ol.source.TileDebug.Tile_(tileCoord, tileSize, text);
+			this.tileCache.set(tileCoordKey, tile);
+		return tile;
+		}
+	};
+	var osmSource = new ol.source.OSM();
+	
+	var osmZXYgrid = new my.TileDebug({
+		projection: 'EPSG:3857',
+		tileGrid: osmSource.getTileGrid()
+		});
+		
+	var map = new ol.Map({
+	  layers: [
+				new ol.layer.Tile({
+					title: 'OSM',
+					type: 'base',
+					visible: true,
+					source: new ol.source.OSM()
+				}),
+				new ol.layer.Tile({
+				title: 'OSM ZXY Tile Ref',
+				type: 'overlay',
+				visible: true,
+				source: osmZXYgrid
+				})
+				],
+	  controls: controlsncA,
+	  target: 'map',
+	  view: new ol.View({
+		center: ol.proj.fromLonLat([-0.1275, 51.507222]), 
+        zoom: 10
+	  })
+	});
+	map.updateSize();
+
+</script>
+</html>
